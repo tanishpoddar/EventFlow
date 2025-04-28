@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}Browse Events - EventFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Browse Events</h1>
+
+    <!-- Optional: Search/Filter Form -->
+    <form method="GET" action="{{ url_for('list_events') }}" class="filter-form card card-body mb-4">
+        <h4>Filter Events</h4>
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" id="search" class="form-control" placeholder="Event name, description...">
+            </div>
+            <div class="form-group">
+                <label for="location">Location</label>
+                <input type="text" name="location" id="location" class="form-control" placeholder="City or Venue">
+            </div>
+             <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" name="date" id="date" class="form-control">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-accent">Find Events</button>
+            </div>
+        </div>
+    </form>
+    <!-- End Filter Form -->
+
+
+    {% if events %}
+    <div class="events-grid">
+        {% for event in events %}
+        <div class="card event-card">
+            <img src="https://picsum.photos/400/250?random={{ event.event_id }}" alt="{{ event.name }} banner">
+            <div class="card-body">
+                <h3 class="card-title">{{ event.name }}</h3>
+                 <p class="card-text text-muted">
+                    <small>
+                       {{ event.date.strftime('%a, %b %d, %Y') }} at {{ event.time.strftime('%I:%M %p') }} <br>
+                       {% if event.venue %}
+                         📍 {{ event.venue.name }}, {{ event.venue.city }}
+                       {% endif %}
+                    </small>
+                 </p>
+                <p class="card-text">{{ event.description | truncate(120, True) }}</p> {# Slightly longer truncate #}
+            </div>
+             <div class="card-footer">
+                 <a href="{{ url_for('event_details', event_id=event.event_id) }}" class="btn btn-primary btn-sm">View Details & Tickets</a>
+             </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center card card-body">
+        <p class="text-muted">No events found matching your criteria.</p>
+         <a href="{{ url_for('list_events') }}">Clear filters and view all events</a>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    .filter-form h4 {
+        margin-bottom: 1rem;
+    }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        align-items: end; /* Align button to bottom */
+    }
+    .filter-grid button {
+        width: 100%;
+    }
+     .event-card .card-text small {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ form_title }} - EventFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card form-card">
+        <div class="card-header">
+             <h2>{{ form_title }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ form_action }}">
+                <div class="form-group">
+                    <label for="name">Event Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ event.name if event else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="4">{{ event.description if event else '' }}</textarea>
+                </div>
+                 <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="date">Date *</label>
+                        {# Format date for input type="date" which expects YYYY-MM-DD #}
+                        <input type="date" class="form-control" id="date" name="date" value="{{ event.date.strftime('%Y-%m-%d') if event and event.date else '' }}" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="time">Time *</label>
+                         {# Format time for input type="time" which expects HH:MM #}
+                        <input type="time" class="form-control" id="time" name="time" value="{{ event.time.strftime('%H:%M') if event and event.time else '' }}" required>
+                    </div>
+                 </div>
+                <div class="form-group">
+                    <label for="location_id">Venue *</label>
+                    <select class="form-control" id="location_id" name="location_id" required>
+                        <option value="" disabled {% if not event %}selected{% endif %}>Select a venue</option>
+                        {% for venue in venues %}
+                            <option value="{{ venue.venue_id }}" {% if event and event.location_id == venue.venue_id %}selected{% endif %}>
+                                {{ venue.name }} ({{ venue.city }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                     <small class="form-text text-muted">Need a new venue? <a href="{{ url_for('create_venue') }}">Create one here.</a></small>
+                </div>
+
+                 <div class="form-actions mt-4">
+                     <button type="submit" class="btn btn-primary">{{ 'Update' if event else 'Create' }} Event</button>
+                     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    .form-card {
+        max-width: 700px;
+        margin: 2rem auto;
+    }
+     /* Simple row/col simulation for side-by-side fields */
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -5px;
+        margin-left: -5px;
+    }
+    .form-row > .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-right: 5px;
+        padding-left: 5px;
+    }
+    @media (max-width: 767px) {
+         .form-row > .col-md-6 {
+             flex: 0 0 100%;
+             max-width: 100%;
+         }
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ form_title }} - EventFlow{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card form-card">
+        <div class="card-header">
+             <h2>{{ form_title }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ form_action }}">
+                <div class="form-group">
+                    <label for="name">Venue Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ venue.name if venue else '' }}" required>
+                </div>
+                 <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea class="form-control" id="address" name="address" rows="3">{{ venue.address if venue else '' }}</textarea>
+                </div>
+                <div class="form-row">
+                     <div class="form-group col-md-6">
+                        <label for="city">City</label>
+                        <input type="text" class="form-control" id="city" name="city" value="{{ venue.city if venue else '' }}">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="state">State</label>
+                        <input type="text" class="form-control" id="state" name="state" value="{{ venue.state if venue else '' }}">
+                    </div>
+                </div>
+                 <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="zip_code">Zip Code</label>
+                        <input type="text" class="form-control" id="zip_code" name="zip_code" value="{{ venue.zip_code if venue else '' }}">
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="capacity">Capacity</label>
+                        <input type="number" class="form-control" id="capacity" name="capacity" value="{{ venue.capacity if venue else '' }}" min="0">
+                    </div>
+                 </div>
+
+                 <div class="form-actions mt-4">
+                     <button type="submit" class="btn btn-primary">{{ 'Update' if venue else 'Create' }} Venue</button>
+                     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    .form-card {
+        max-width: 700px;
+        margin: 2rem auto;
+    }
+     /* Simple row/col simulation */
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -5px;
+        margin-left: -5px;
+    }
+    .form-row > .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-right: 5px;
+        padding-left: 5px;
+    }
+     @media (max-width: 767px) {
+         .form-row > .col-md-6 {
+             flex: 0 0 100%;
+             max-width: 100%;
+         }
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block title %}Welcome to EventFlow{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container text-center">
+        <h1>Discover & Host Events with EventFlow</h1>
+        <p class="lead">Your seamless platform for finding exciting events or organizing your own. Explore, book, and manage everything in one place.</p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('list_events') }}" class="btn btn-primary btn-lg">Explore Events</a>
+            {% if 'user_role' in session and session['user_role'] == 'organizer' %}
+            <a href="{{ url_for('create_event') }}" class="btn btn-accent btn-lg">Create an Event</a>
+            {% elif 'user_id' not in session %}
+             <a href="{{ url_for('signup') }}" class="btn btn-accent btn-lg">Become an Organizer</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="featured-events">
+    <div class="container">
+        <h2 class="text-center mb-4">Featured Events</h2>
+        {% if events %}
+        <div class="events-grid">
+            {% for event in events %}
+            <div class="card event-card">
+                {# Placeholder Image - Replace with actual event image if available #}
+                <img src="https://picsum.photos/400/250?random={{ loop.index }}" alt="{{ event.name }} banner">
+                <div class="card-body">
+                    <h3 class="card-title">{{ event.name }}</h3>
+                    <p class="card-text text-muted">
+                        <small>
+                           {{ event.date.strftime('%a, %b %d, %Y') }} at {{ event.time.strftime('%I:%M %p') }} <br>
+                           {% if event.venue %}
+                             📍 {{ event.venue.name }}, {{ event.venue.city }}
+                           {% endif %}
+                        </small>
+                     </p>
+                    <p class="card-text">{{ event.description | truncate(100, True) }}</p> {# Truncate description #}
+                </div>
+                 <div class="card-footer">
+                     <a href="{{ url_for('event_details', event_id=event.event_id) }}" class="btn btn-primary btn-sm">View Details & Tickets</a>
+                 </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+             <a href="{{ url_for('list_events') }}" class="btn btn-link">View All Events</a>
+        </div>
+        {% else %}
+        <p class="text-center text-muted">No upcoming events found.</p>
+        {% endif %}
+    </div>
+</section>
+
+{% endblock %}
+
+{% block head_extra %}
+<style>
+    .hero {
+        background-color: var(--secondary-color);
+        padding: 4rem 0;
+        margin-bottom: 2rem;
+    }
+    .hero h1 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-size: 2.8rem;
+    }
+    .hero p.lead {
+        font-size: 1.2rem;
+        color: #555;
+        max-width: 700px;
+        margin: 0 auto 1.5rem auto;
+    }
+    .hero-buttons .btn {
+        margin: 0 0.5rem;
+    }
+    .featured-events {
+        padding: 2rem 0;
+    }
+     .event-card .card-text small {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

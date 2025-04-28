@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}EventFlow{% endblock %}</title>
+    <!-- Basic Styling - Replace or extend with a CSS framework like Bootstrap or Tailwind -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Add any other CSS/JS links here -->
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('index') }}">EventFlow</a>
+                <ul class="nav-links">
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('list_events') }}">Browse Events</a></li>
+                    {% if 'user_id' in session %}
+                        {% if session['user_role'] == 'organizer' %}
+                            <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        {% else %}
+                             <li><a href="{{ url_for('my_tickets') }}">My Tickets</a></li>
+                        {% endif %}
+                         <li><span class="nav-user">Hi, {{ session['user_name'] }}!</span></li>
+                        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li><a href="{{ url_for('signup') }}">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        <!-- Page-specific content will be injected here -->
+        {% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            &copy; {{ now().year }} EventFlow. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- Add any JavaScript files here -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+     {% block scripts_extra %}{% endblock %}
+</body>
+</html>
