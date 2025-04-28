@@ -1,7 +1,4 @@
 # EventFlow
-
-![EventFlow Logo](static/css/style.css)
-
 EventFlow is a comprehensive event management platform built with Flask that allows organizers to create and manage events while enabling attendees to browse, book tickets, and manage their event participation.
 
 ## 🌟 Features
