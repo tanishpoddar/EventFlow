@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 import bcrypt
 from functools import wraps
+from typing import List
 
 # Load environment variables
 load_dotenv()
@@ -12,7 +13,7 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:Tanishpoddar.18@127.0.0.1/eventhub'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
@@ -63,9 +64,9 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('User.user_id'), nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
     total_price = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_id = db.Column(db.Integer, db.ForeignKey('Payment.payment_id'), nullable=True) # Changed FK name
+    payment_id = db.Column(db.Integer, db.ForeignKey('Payment.payment_id'), nullable=True)
     tickets = db.relationship('Ticket', backref='order', lazy=True)
-    payment = db.relationship('Payment', backref=db.backref('order', uselist=False)) # One-to-one with Payment
+    payment = db.relationship('Payment', backref=db.backref('order', uselist=False))
 
 class Ticket(db.Model):
     __tablename__ = 'Ticket'
@@ -79,10 +80,9 @@ class Ticket(db.Model):
 class Payment(db.Model):
     __tablename__ = 'Payment'
     payment_id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, nullable=False, unique=True) # Removed FK to simplify Order relationship
+    order_id = db.Column(db.Integer, nullable=False, unique=True)
     payment_method = db.Column(db.Enum('credit card', 'paypal', 'other'), nullable=False)
     transaction_id = db.Column(db.String(255))
-    # Removed FK from here, relationship defined in Order
 
 
 # --- Helper Functions ---
