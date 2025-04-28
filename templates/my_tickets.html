@@ -11,7 +11,7 @@
             <div class="card order-card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>Order #{{ order.order_id }} - Placed on {{ order.date.strftime('%Y-%m-%d %H:%M') }}</span>
-                    <span class="order-total">Total: <strong>${{ "%.2f"|format(order.total_price) }}</strong></span>
+                    <span class="order-total">Total: <strong>₹{{ "%.2f"|format(order.total_price) }}</strong></span>
                 </div>
                 <div class="card-body">
                     {% if order.tickets %}
@@ -25,10 +25,17 @@
                                             {{ ticket.event.date.strftime('%a, %b %d, %Y') }} at {{ ticket.event.time.strftime('%I:%M %p') }}<br>
                                             Type: {{ ticket.type | title }}
                                             {% if ticket.seat_number %} | Seat: {{ ticket.seat_number }} {% endif %}
-                                            | Price: ${{ "%.2f"|format(ticket.price) }}
+                                            | Price: ₹{{ "%.2f"|format(ticket.price) }}
                                         </small>
                                     </div>
-                                    <a href="{{ url_for('event_details', event_id=ticket.event_id) }}" class="btn btn-sm btn-outline-primary">View Event</a>
+                                    <div>
+                                        <a href="{{ url_for('event_details', event_id=ticket.event_id) }}" class="btn btn-sm btn-outline-primary">View Event</a>
+                                        <form method="POST" action="{{ url_for('cancel_ticket', ticket_id=ticket.ticket_id) }}" 
+                                              onsubmit="return confirm('Are you sure you want to cancel this ticket?');" 
+                                              style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                                        </form>
+                                    </div>
                                     {# Add link to download/view ticket PDF if implemented #}
                                 </li>
                             {% endfor %}

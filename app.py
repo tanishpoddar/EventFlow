@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import bcrypt
 from functools import wraps
 from typing import List
+import datetime
+from flask_migrate import Migrate
 
 # Load environment variables
 load_dotenv()
@@ -19,9 +21,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
+# Initialize Flask-Migrate
+migrate = Migrate(app, db)
+
+# Add context processor for current year
+@app.context_processor
+def inject_now():
+    return {'now': datetime.datetime.now()}
+
 # --- Database Models ---
 class User(db.Model):
-    __tablename__ = 'User'
+    __tablename__ = 'user'
     user_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
@@ -30,7 +40,7 @@ class User(db.Model):
     orders = db.relationship('Order', backref='user', lazy=True)
 
 class Venue(db.Model):
-    __tablename__ = 'Venue'
+    __tablename__ = 'venue'
     venue_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     address = db.Column(db.Text)
@@ -41,49 +51,57 @@ class Venue(db.Model):
     events = db.relationship('Event', backref='venue', lazy=True)
 
 class Event(db.Model):
-    __tablename__ = 'Event'
+    __tablename__ = 'event'
     event_id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
-    location_id = db.Column(db.Integer, db.ForeignKey('Venue.venue_id'), nullable=False)
-    speakers = db.relationship('Speaker', backref='event', lazy=True, cascade="all, delete-orphan")
-    tickets = db.relationship('Ticket', backref='event', lazy=True, cascade="all, delete-orphan")
-
-class Speaker(db.Model):
-    __tablename__ = 'Speaker'
-    speaker_id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    bio = db.Column(db.Text)
-    event_id = db.Column(db.Integer, db.ForeignKey('Event.event_id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('venue.venue_id'), nullable=False)
+    speakers = db.relationship('Speaker', backref='event', lazy=True)
+    tickets = db.relationship('Ticket', backref='event', lazy=True)
 
 class Order(db.Model):
-    __tablename__ = 'Order'
+    __tablename__ = 'order'
     order_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('User.user_id'), nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    user_id = db.Column(db.Integer, db.ForeignKey('user.user_id'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
     total_price = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_id = db.Column(db.Integer, db.ForeignKey('Payment.payment_id'), nullable=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payment.payment_id'))
     tickets = db.relationship('Ticket', backref='order', lazy=True)
-    payment = db.relationship('Payment', backref=db.backref('order', uselist=False))
-
-class Ticket(db.Model):
-    __tablename__ = 'Ticket'
-    ticket_id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('Event.event_id'), nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey('Order.order_id'), nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)
-    type = db.Column(db.Enum('general admission', 'vip', 'other'), nullable=False)
-    seat_number = db.Column(db.Integer)
+    payment = db.relationship('Payment', backref=db.backref('order', uselist=False), foreign_keys=[payment_id])
 
 class Payment(db.Model):
-    __tablename__ = 'Payment'
+    __tablename__ = 'payment'
     payment_id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, nullable=False, unique=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.order_id'), nullable=False, unique=True)
     payment_method = db.Column(db.Enum('credit card', 'paypal', 'other'), nullable=False)
     transaction_id = db.Column(db.String(255))
 
+class Ticket(db.Model):
+    __tablename__ = 'ticket'
+    ticket_id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.event_id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.order_id'), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    type = db.Column(db.String(50), nullable=False)
+    seat_number = db.Column(db.Integer)
+
+class Speaker(db.Model):
+    __tablename__ = 'speaker'
+    speaker_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    bio = db.Column(db.Text)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.event_id'), nullable=False)
+
+class TicketType(db.Model):
+    __tablename__ = 'tickettype'
+    ticket_type_id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('event.event_id'), nullable=False)
+    type = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    event = db.relationship('Event', backref=db.backref('ticket_types', lazy=True))
 
 # --- Helper Functions ---
 def hash_password(password):
@@ -104,12 +122,21 @@ def login_required(role="attendee"):
                 flash('Please log in to access this page.', 'warning')
                 return redirect(url_for('login'))
             user = User.query.get(session['user_id'])
-            if not user or user.user_type not in (role, 'administrator'): # Allow admin access too
-                 if user.user_type == 'organizer' and role == 'attendee': # Organizer can access attendee pages
-                     pass # Allow organizer to see attendee views
-                 else:
+            if not user:
+                flash('User not found.', 'danger')
+                return redirect(url_for('login'))
+            
+            # Administrator has access to everything
+            if user.user_type == 'administrator':
+                return f(*args, **kwargs)
+                
+            # For non-administrators, check role
+            if user.user_type != role:
+                if user.user_type == 'organizer' and role == 'attendee':
+                    pass  # Allow organizer to see attendee views
+                else:
                     flash('You do not have permission to access this page.', 'danger')
-                    return redirect(url_for('index')) # Redirect to a safe page
+                    return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
     return wrapper
@@ -136,12 +163,7 @@ def list_events():
 def event_details(event_id):
     """Page displaying details for a specific event."""
     event = Event.query.get_or_404(event_id)
-    # Fetch available ticket types for this event (assuming types are defined elsewhere or based on existing tickets)
-    # For simplicity, let's simulate ticket types here. In reality, this might involve a TicketType model or logic.
-    ticket_types = [
-        {'type': 'general admission', 'price': 50.00},
-        {'type': 'vip', 'price': 150.00}
-    ] # Example
+    ticket_types = TicketType.query.filter_by(event_id=event_id).all()
     return render_template('event_details.html', event=event, ticket_types=ticket_types)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -422,40 +444,164 @@ def delete_speaker(speaker_id):
 # --- CRUD Operations for Tickets (Conceptual - Booking is attendee, managing is organizer) ---
 # Note: Full ticket CRUD might be complex. Organizer might manage ticket *types* per event.
 
-@app.route('/events/<int:event_id>/tickets/manage')
+@app.route('/events/<int:event_id>/tickets/manage', methods=['GET', 'POST'])
 @organizer_required
 def manage_event_tickets(event_id):
     event = Event.query.get_or_404(event_id)
-    # Fetch or define ticket types/pricing specific to this event
-    # This could involve a separate TicketType model or simple management within the event
-    flash("Ticket management feature is conceptual.", "info")
-    # return render_template('manage_tickets.html', event=event)
-    return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        # Add or update ticket types
+        types = request.form.getlist('type')
+        prices = request.form.getlist('price')
+        quantities = request.form.getlist('quantity')
+        # Remove existing ticket types
+        TicketType.query.filter_by(event_id=event_id).delete()
+        for t, p, q in zip(types, prices, quantities):
+            if t.strip() and p and q:
+                ticket_type = TicketType(event_id=event_id, type=t.strip(), price=float(p), quantity=int(q))
+                db.session.add(ticket_type)
+        db.session.commit()
+        flash('Ticket types updated!', 'success')
+        return redirect(url_for('manage_event_tickets', event_id=event_id))
+    ticket_types = TicketType.query.filter_by(event_id=event_id).all()
+    return render_template('manage_tickets.html', event=event, ticket_types=ticket_types)
 
+@app.route('/events/<int:event_id>/tickets')
+@login_required(role="organizer")
+def view_event_tickets(event_id):
+    """View all tickets for an event (organizers and admins only)"""
+    event = Event.query.get_or_404(event_id)
+    # Get all tickets for this event with user and order information
+    tickets = Ticket.query.join(Order).join(User).filter(Ticket.event_id == event_id).all()
+    return render_template('event_tickets.html', event=event, tickets=tickets)
+
+@app.route('/tickets/<int:ticket_id>/delete', methods=['POST'])
+@login_required(role="organizer")
+def delete_ticket(ticket_id):
+    """Delete a ticket (organizers and admins only)"""
+    ticket = Ticket.query.get_or_404(ticket_id)
+    event_id = ticket.event_id
+    
+    # Check if user is admin or the organizer of this event
+    user = User.query.get(session['user_id'])
+    if user.user_type != 'administrator':
+        # TODO: Add event.organizer_id check once that field is added
+        flash('You do not have permission to delete this ticket.', 'danger')
+        return redirect(url_for('view_event_tickets', event_id=event_id))
+    
+    try:
+        # Increment the ticket type quantity
+        ticket_type = TicketType.query.filter_by(
+            event_id=ticket.event_id,
+            type=ticket.type
+        ).first()
+        if ticket_type:
+            ticket_type.quantity += 1
+            
+        # Delete the ticket
+        db.session.delete(ticket)
+        db.session.commit()
+        flash('Ticket deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting ticket: {str(e)}', 'danger')
+    
+    return redirect(url_for('view_event_tickets', event_id=event_id))
+
+@app.route('/tickets/<int:ticket_id>/cancel', methods=['POST'])
+@login_required(role="attendee")
+def cancel_ticket(ticket_id):
+    """Cancel a ticket (attendees only)"""
+    # Get the ticket and verify ownership
+    ticket = Ticket.query.get_or_404(ticket_id)
+    order = ticket.order
+    
+    # Check if the ticket belongs to the current user
+    if order.user_id != session['user_id']:
+        flash('You do not have permission to cancel this ticket.', 'danger')
+        return redirect(url_for('my_tickets'))
+    
+    try:
+        # Start a new transaction
+        db.session.begin_nested()
+        
+        # Increment the ticket type quantity
+        ticket_type = TicketType.query.filter_by(
+            event_id=ticket.event_id,
+            type=ticket.type
+        ).first()
+        if ticket_type:
+            ticket_type.quantity += 1
+        
+        # Get the order and all its tickets
+        order_id = ticket.order_id
+        event_id = ticket.event_id
+        ticket_type_name = ticket.type
+        
+        # Delete the specific ticket
+        db.session.delete(ticket)
+        db.session.flush()  # Flush to ensure the ticket is deleted
+        
+        # Check if there are any remaining tickets in the order
+        remaining_tickets = Ticket.query.filter_by(order_id=order_id).all()
+        
+        if not remaining_tickets:
+            # If no tickets remain, delete the order
+            order = Order.query.get(order_id)
+            if order:
+                db.session.delete(order)
+        else:
+            # Update the order total price
+            order = Order.query.get(order_id)
+            if order:
+                new_total = sum(float(t.price) for t in remaining_tickets)
+                order.total_price = new_total
+        
+        # Commit the transaction
+        db.session.commit()
+        flash('Ticket cancelled successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error cancelling ticket: {str(e)}', 'danger')
+    
+    return redirect(url_for('my_tickets'))
 
 # --- Attendee Actions ---
 @app.route('/book/<int:event_id>', methods=['POST'])
-@login_required(role="attendee") # Only logged-in attendees can book
+@login_required(role="attendee")
 def book_ticket(event_id):
-    """Handles ticket booking (Conceptual)."""
+    # Check if user is an attendee
+    user = User.query.get(session['user_id'])
+    if user.user_type != 'attendee':
+        flash('Only attendees can book tickets.', 'danger')
+        return redirect(url_for('event_details', event_id=event_id))
+        
     event = Event.query.get_or_404(event_id)
     user_id = session['user_id']
-    ticket_type = request.form.get('ticket_type')
-    quantity = request.form.get('quantity', 1, type=int) # Example quantity
-
-    # --- Placeholder Logic for Booking ---
-    # 1. Validate ticket type and availability (check event capacity, ticket stock)
-    # 2. Calculate total price
-    # 3. Create Order record
-    # 4. Create Ticket records linked to the Order and Event
-    # 5. (Optional) Integrate with Payment gateway
-    # 6. Update Payment record
-    # 7. Commit transaction
-    # --- End Placeholder ---
-
-    flash(f"Booking {quantity} '{ticket_type}' ticket(s) for '{event.name}' (Feature under development).", "info")
-    # In a real app, redirect to order confirmation or payment page
-    return redirect(url_for('event_details', event_id=event_id))
+    ticket_type_name = request.form.get('ticket_type')
+    quantity = int(request.form.get('quantity', 1))
+    ticket_type = TicketType.query.filter_by(event_id=event_id, type=ticket_type_name).first()
+    if not ticket_type or quantity < 1 or quantity > ticket_type.quantity:
+        flash('Invalid ticket selection or not enough tickets available.', 'danger')
+        return redirect(url_for('event_details', event_id=event_id))
+    # Create order
+    total_price = float(ticket_type.price) * quantity
+    order = Order(user_id=user_id, date=datetime.datetime.now(), total_price=total_price)
+    db.session.add(order)
+    db.session.flush()  # Get order_id
+    # Create tickets
+    for _ in range(quantity):
+        ticket = Ticket(
+            event_id=event_id,
+            order_id=order.order_id,
+            price=ticket_type.price,
+            type=ticket_type.type
+        )
+        db.session.add(ticket)
+    # Decrement available quantity
+    ticket_type.quantity -= quantity
+    db.session.commit()
+    flash(f'Booked {quantity} "{ticket_type.type}" ticket(s) for "{event.name}"!', 'success')
+    return redirect(url_for('my_tickets'))
 
 @app.route('/my-tickets')
 @login_required(role="attendee")

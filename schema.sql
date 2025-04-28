@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS Speaker;
 DROP TABLE IF EXISTS Event;
 DROP TABLE IF EXISTS Venue;
 DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS TicketType;
 
 
 -- Create User table
@@ -40,30 +41,30 @@ CREATE TABLE Event (
   date DATE NOT NULL,
   time TIME NOT NULL,
   location_id INT NOT NULL,
-  FOREIGN KEY (location_id) REFERENCES Venue(venue_id) ON DELETE RESTRICT ON UPDATE CASCADE -- Prevent deleting venue if events exist
+  FOREIGN KEY (location_id) REFERENCES Venue(venue_id)
 );
 
--- Create Speaker table
-CREATE TABLE Speaker (
-  speaker_id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(255) NOT NULL,
-  bio TEXT,
-  event_id INT NOT NULL,
-  FOREIGN KEY (event_id) REFERENCES Event(event_id) ON DELETE CASCADE ON UPDATE CASCADE -- Delete speaker if event is deleted
-);
-
-
--- Create Order table (Use backticks because Order is a reserved keyword)
+-- Create Order table
 CREATE TABLE `Order` (
   order_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
-  date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Use DATETIME and default value
+  date DATETIME NOT NULL,
   total_price DECIMAL(10,2) NOT NULL,
-  payment_id INT UNIQUE, -- A payment belongs to one order
-  FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE ON UPDATE CASCADE -- Delete orders if user is deleted
-  -- FK for payment_id will be added in Payment table or handled via relationship
+  FOREIGN KEY (user_id) REFERENCES User(user_id)
 );
 
+-- Create Payment table
+CREATE TABLE Payment (
+  payment_id INT PRIMARY KEY AUTO_INCREMENT,
+  order_id INT NOT NULL UNIQUE,
+  payment_method ENUM('credit card', 'paypal', 'other') NOT NULL,
+  transaction_id VARCHAR(255),
+  FOREIGN KEY (order_id) REFERENCES `Order`(order_id)
+);
+
+-- Add payment_id foreign key to Order table
+ALTER TABLE `Order` ADD COLUMN payment_id INT;
+ALTER TABLE `Order` ADD FOREIGN KEY (payment_id) REFERENCES Payment(payment_id);
 
 -- Create Ticket table
 CREATE TABLE Ticket (
@@ -72,25 +73,29 @@ CREATE TABLE Ticket (
   order_id INT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   type ENUM('general admission', 'vip', 'other') NOT NULL,
-  seat_number INT, -- Can be NULL
-  FOREIGN KEY (event_id) REFERENCES Event(event_id) ON DELETE CASCADE ON UPDATE CASCADE, -- Delete tickets if event is deleted
-  FOREIGN KEY (order_id) REFERENCES `Order`(order_id) ON DELETE CASCADE ON UPDATE CASCADE -- Delete tickets if order is deleted
+  seat_number INT,
+  FOREIGN KEY (event_id) REFERENCES Event(event_id),
+  FOREIGN KEY (order_id) REFERENCES `Order`(order_id)
 );
 
-
--- Create Payment table
-CREATE TABLE Payment (
-  payment_id INT PRIMARY KEY AUTO_INCREMENT,
-  order_id INT NOT NULL UNIQUE, -- Ensure one payment per order
-  payment_method ENUM('credit card', 'paypal', 'other') NOT NULL,
-  transaction_id VARCHAR(255), -- Can be NULL initially
-  FOREIGN KEY (order_id) REFERENCES `Order`(order_id) ON DELETE CASCADE ON UPDATE CASCADE -- Link payment to order, delete payment if order deleted
+-- Create Speaker table
+CREATE TABLE Speaker (
+  speaker_id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  bio TEXT,
+  event_id INT NOT NULL,
+  FOREIGN KEY (event_id) REFERENCES Event(event_id)
 );
 
--- Add the foreign key constraint from Order to Payment after both tables are created
--- ALTER TABLE `Order`
--- ADD CONSTRAINT fk_order_payment
--- FOREIGN KEY (payment_id) REFERENCES Payment(payment_id) ON DELETE SET NULL ON UPDATE CASCADE; -- Allow order to exist without payment initially
+-- Create TicketType table
+CREATE TABLE TicketType (
+  ticket_type_id INT PRIMARY KEY AUTO_INCREMENT,
+  event_id INT NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  quantity INT NOT NULL,
+  FOREIGN KEY (event_id) REFERENCES Event(event_id)
+);
 
 -- Example Data (Optional)
 -- INSERT INTO User (name, email, password, user_type) VALUES

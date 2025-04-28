@@ -5,3 +5,4 @@ Werkzeug>=3.0.0
 mysql-connector-python>=8.0
 python-dotenv>=0.19
 bcrypt>=3.2
+Flask-Migrate>=4.0.5

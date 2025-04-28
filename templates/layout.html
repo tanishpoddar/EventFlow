@@ -13,7 +13,9 @@
     <header>
         <nav class="navbar">
             <div class="container">
-                <a class="navbar-brand" href="{{ url_for('index') }}">EventFlow</a>
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <span>EventFlow</span>
+                </a>
                 <ul class="nav-links">
                     <li><a href="{{ url_for('index') }}">Home</a></li>
                     <li><a href="{{ url_for('list_events') }}">Browse Events</a></li>
@@ -50,9 +52,9 @@
         {% endblock %}
     </main>
 
-    <footer>
+    <footer class="footer">
         <div class="container">
-            &copy; {{ now().year }} EventFlow. All rights reserved.
+            <p>&copy; {{ now.year }} EventFlow. All rights reserved.</p>
         </div>
     </footer>
 
