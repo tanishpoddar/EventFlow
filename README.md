@@ -1,7 +1,7 @@
 # EventFlow
 EventFlow is a comprehensive event management platform built with Flask that allows organizers to create and manage events while enabling attendees to browse, book tickets, and manage their event participation.
 
-## 🌟 Features
+## Features
 
 ### For Attendees
 - **User Authentication**: Secure signup and login system
@@ -18,7 +18,7 @@ EventFlow is a comprehensive event management platform built with Flask that all
 - **Ticket Management**: Create and manage different ticket types with pricing
 - **Order Overview**: View all orders and tickets sold for your events
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.8 or higher
@@ -64,7 +64,7 @@ EventFlow is a comprehensive event management platform built with Flask that all
 
    The application will be available at `http://127.0.0.1:5000`
 
-## 📊 Database Schema
+## Database Schema
 
 EventFlow uses a relational database with the following main tables:
 
@@ -79,7 +79,7 @@ EventFlow uses a relational database with the following main tables:
 
 For detailed schema information, refer to the `schema.sql` file.
 
-## 🔧 Configuration
+## Configuration
 
 The application can be configured through:
 
@@ -87,7 +87,7 @@ The application can be configured through:
 2. **config.py**: Contains default configuration values
 3. **Flask Configuration**: Use Flask's configuration system for additional settings
 
-## 🧹 Maintenance
+## Maintenance
 
 ### Cleaning Database Data
 To clean all data except users:
@@ -95,6 +95,6 @@ To clean all data except users:
 python clean_data.py
 ```
 
-## 📝 License
+## License
 
 This project is licensed under the GNU General Public License v3.0 License - see the LICENSE file for details.
