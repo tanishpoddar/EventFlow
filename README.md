@@ -18,12 +18,28 @@ EventFlow is a comprehensive event management platform built with Flask that all
 - **Ticket Management**: Create and manage different ticket types with pricing
 - **Order Overview**: View all orders and tickets sold for your events
 
+## Project Structure
+```
+EventFlow/
+├── app.py              # Main application file
+├── config.py           # Configuration settings
+├── requirements.txt    # Python dependencies
+├── schema.sql          # Database schema
+├── create_admin_users.py  # Admin user creation script
+├── clean_data.py       # Database cleanup utility
+├── migrations/         # Database migration files
+├── static/            # Static assets (CSS, JS, images)
+├── templates/         # HTML templates
+└── .env               # Environment variables (create this file)
+```
+
 ## Getting Started
 
 ### Prerequisites
 - Python 3.8 or higher
 - MySQL 5.7 or higher
 - pip (Python package manager)
+- Git
 
 ### Installation
 
@@ -33,36 +49,64 @@ EventFlow is a comprehensive event management platform built with Flask that all
    cd EventFlow
    ```
 
-2. **Install dependencies**
+2. **Create and activate a virtual environment (recommended)**
+   ```bash
+   python -m venv venv
+   # On Windows
+   venv\Scripts\activate
+   # On Unix or MacOS
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Set up the database**
-   - Create a MySQL database
-   - Update database connection details in `config.py` or set environment variables:
-     ```
-     export FLASK_APP=app.py
-     export FLASK_ENV=development
-     export DATABASE_URL=mysql://username:password@localhost/eventflow
-     ```
-
-4. **Initialize the database**
-   ```bash
-   flask db upgrade
+4. **Set up environment variables**
+   Create a `.env` file in the project root with the following variables:
+   ```
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   DATABASE_URL=mysql://username:password@localhost/eventflow
+   SECRET_KEY=your-secret-key-here
    ```
 
-5. **Create admin users (optional)**
+5. **Set up the database**
+   - Create a MySQL database named `eventflow`
+   - Initialize the database schema:
+     ```bash
+     flask db upgrade
+     ```
+
+6. **Create admin users (optional)**
    ```bash
    python create_admin_users.py
    ```
 
-6. **Run the application**
+7. **Run the application**
    ```bash
    flask run
    ```
-
    The application will be available at `http://127.0.0.1:5000`
+
+## Development
+
+### Database Management
+- **Migrations**: Use Flask-Migrate for database migrations
+  ```bash
+  flask db migrate -m "Migration message"
+  flask db upgrade
+  ```
+
+- **Clean Data**: To clean all data except users:
+  ```bash
+  python clean_data.py
+  ```
+
+### Code Style
+- The project uses `.hintrc` for code style guidelines
+- Follow PEP 8 standards for Python code
 
 ## Database Schema
 
@@ -83,17 +127,9 @@ For detailed schema information, refer to the `schema.sql` file.
 
 The application can be configured through:
 
-1. **Environment Variables**: Set database connection and other settings
+1. **Environment Variables**: Set in `.env` file
 2. **config.py**: Contains default configuration values
 3. **Flask Configuration**: Use Flask's configuration system for additional settings
-
-## Maintenance
-
-### Cleaning Database Data
-To clean all data except users:
-```bash
-python clean_data.py
-```
 
 ## License
 
