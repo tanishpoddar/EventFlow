@@ -3,138 +3,79 @@
 {% block title %}{{ event.name }} - EventFlow{% endblock %}
 
 {% block content %}
-<div class="event-details-page">
-    <div class="event-banner">
-        <div class="banner-overlay">
-            <div class="container">
-                <h1>{{ event.name }}</h1>
-                 {% if session.get('user_role') == 'organizer' %}
-                <div class="organizer-actions mt-2">
-                    <a href="{{ url_for('edit_event', event_id=event.event_id) }}" class="btn btn-sm btn-secondary">Edit Event</a>
-                    <form action="{{ url_for('delete_event', event_id=event.event_id) }}" method="POST" style="display: inline;">
-                         <button type="submit" class="btn btn-sm btn-danger">Delete Event</button>
-                     </form>
-                     <a href="{{ url_for('manage_event_tickets', event_id=event.event_id) }}" class="btn btn-sm btn-secondary">Manage Tickets</a>
-                 </div>
-                {% endif %}
-            </div>
+<div class="container">
+    <div class="card event-details-card">
+        <div class="card-header">
+            <h1>{{ event.name }}</h1>
         </div>
-    </div>
+        <div class="card-body">
+            <div class="event-info">
+                <p class="event-description">{{ event.description }}</p>
+                
+                <div class="event-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ event.date.strftime('%B %d, %Y') }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="event-time-display">
+                            {% if event.start_time and event.end_time %}
+                                {{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}
+                                <span class="duration">({{ ((event.end_time.hour * 60 + event.end_time.minute) - (event.start_time.hour * 60 + event.start_time.minute)) // 60 }} hours)</span>
+                            {% else %}
+                                Time information not available
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ event.venue.name }}, {{ event.venue.city }}</span>
+                    </div>
+                </div>
 
-    <div class="container event-content mt-4">
-        <div class="details-grid">
-            <!-- Left Column: Details & Speakers -->
-            <div class="details-main">
-                 <div class="card mb-4">
-                     <div class="card-header"><h2>Event Details</h2></div>
-                     <div class="card-body">
-                         <p><strong>Date:</strong> {{ event.date.strftime('%A, %B %d, %Y') }}</p>
-                         <p><strong>Time:</strong> {{ event.time.strftime('%I:%M %p') }}</p>
-                          {% if event.venue %}
-                         <p><strong>Location:</strong> {{ event.venue.name }}</p>
-                         <p><em>{{ event.venue.address }}, {{ event.venue.city }}</em></p>
-                          {% if event.venue.capacity %}
-                          <p><small>Capacity: {{ event.venue.capacity }}</small></p>
-                          {% endif %}
-                         {% endif %}
-                         <hr class="my-3">
-                         <p>{{ event.description | safe }}</p> {# Use safe if description contains HTML #}
-                     </div>
-                 </div>
+                {% if event.speakers %}
+                <div class="speakers-section">
+                    <h3>Speakers</h3>
+                    <div class="speakers-grid">
+                        {% for speaker in event.speakers %}
+                        <div class="speaker-card">
+                            <h4>{{ speaker.name }}</h4>
+                            {% if speaker.bio %}
+                            <p>{{ speaker.bio }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
-                 {% if event.speakers %}
-                 <div class="card mb-4">
-                      <div class="card-header d-flex justify-content-between align-items-center">
-                          <h2>Speakers</h2>
-                           {% if session.get('user_role') == 'organizer' %}
-                               <a href="{{ url_for('create_speaker', event_id=event.event_id) }}" class="btn btn-sm btn-accent">+ Add Speaker</a>
-                           {% endif %}
-                      </div>
-                     <div class="card-body">
-                         {% for speaker in event.speakers %}
-                         <div class="speaker-item mb-3">
-                             <div class="d-flex justify-content-between align-items-start">
-                                 <div>
-                                     <strong>{{ speaker.name }}</strong>
-                                     {% if speaker.bio %}
-                                     <p><small>{{ speaker.bio }}</small></p>
-                                     {% endif %}
-                                 </div>
-                                {% if session.get('user_role') == 'organizer' %}
-                                 <div class="actions">
-                                      <a href="{{ url_for('edit_speaker', speaker_id=speaker.speaker_id) }}" class="btn btn-sm btn-secondary">Edit</a>
-                                      <form action="{{ url_for('delete_speaker', speaker_id=speaker.speaker_id) }}" method="POST" style="display: inline;">
-                                         <button type="submit" class="btn btn-sm btn-danger">Del</button>
-                                      </form>
-                                 </div>
-                                {% endif %}
-                             </div>
-                         </div>
-                         {% if not loop.last %}<hr>{% endif %}
-                         {% endfor %}
-                     </div>
-                 </div>
-                 {% endif %}
-
-                 <!-- Add other sections like schedule if needed -->
-            </div>
-
-             <!-- Right Column: Tickets & Map -->
-            <div class="details-sidebar">
-                 <div class="card mb-4">
-                     <div class="card-header"><h3>Tickets</h3></div>
-                     <div class="card-body">
-                         {% if ticket_types %}
-                             {% if session.get('user_role') == 'attendee' %}
-                             <form method="POST" action="{{ url_for('book_ticket', event_id=event.event_id) }}">
-                                 <div class="form-group">
-                                     <label for="ticket_type">Ticket Type</label>
-                                     <select name="ticket_type" id="ticket_type" class="form-control" required>
-                                         {% for ticket in ticket_types %}
-                                             <option value="{{ ticket.type }}">{{ ticket.type | title }} - ₹{{ '%.2f'|format(ticket.price) }} ({{ ticket.quantity }} left)</option>
-                                         {% endfor %}
-                                     </select>
-                                 </div>
-                                 <div class="form-group mt-2">
-                                     <label for="quantity">Quantity</label>
-                                     <input type="number" name="quantity" id="quantity" class="form-control" min="1" value="1" required>
-                                 </div>
-                                 <button type="submit" class="btn btn-accent btn-block mt-3">Book Now</button>
-                             </form>
-                             {% else %}
-                             <div class="alert alert-info">
-                                 <p>Only attendees can book tickets. Please log in as an attendee to book tickets for this event.</p>
-                             </div>
-                             <div class="table-responsive">
-                                 <table class="table table-sm">
-                                     <thead>
-                                         <tr>
-                                             <th>Type</th>
-                                             <th>Price</th>
-                                             <th>Available</th>
-                                         </tr>
-                                     </thead>
-                                     <tbody>
-                                         {% for ticket in ticket_types %}
-                                         <tr>
-                                             <td>{{ ticket.type | title }}</td>
-                                             <td>₹{{ "%.2f"|format(ticket.price) }}</td>
-                                             <td>{{ ticket.quantity }}</td>
-                                         </tr>
-                                         {% endfor %}
-                                     </tbody>
-                                 </table>
-                             </div>
-                             {% endif %}
-                         {% else %}
-                             <p class="text-muted">Ticket information not available yet.</p>
-                         {% endif %}
-                         {% if session.get('user_role') == 'organizer' %}
-                              <a href="{{ url_for('manage_event_tickets', event_id=event.event_id) }}" class="btn btn-secondary btn-block mt-3">Manage Tickets</a>
-                              <a href="{{ url_for('view_event_tickets', event_id=event.event_id) }}" class="btn btn-info btn-block mt-2">View Booked Tickets</a>
-                         {% endif %}
-                     </div>
-                 </div>
+                <div class="tickets-section">
+                    <h3>Tickets</h3>
+                    {% if ticket_types %}
+                    <div class="tickets-grid">
+                        {% for ticket_type in ticket_types %}
+                        <div class="ticket-card">
+                            <h4>{{ ticket_type.type }}</h4>
+                            <p class="price">₹{{ "%.2f"|format(ticket_type.price) }}</p>
+                            <p class="quantity">Available: {{ ticket_type.quantity }}</p>
+                            {% if session.get('user_id') and session.get('user_role') == 'attendee' %}
+                            <form action="{{ url_for('book_ticket', event_id=event.event_id) }}" method="POST">
+                                <input type="hidden" name="ticket_type" value="{{ ticket_type.type }}">
+                                <div class="form-group">
+                                    <label for="quantity">Quantity</label>
+                                    <input type="number" class="form-control" name="quantity" min="1" max="{{ ticket_type.quantity }}" value="1" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Book Now</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p>No tickets available for this event.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -143,67 +84,81 @@
 
 {% block head_extra %}
 <style>
-    .event-banner {
-        position: relative;
-        height: 350px; /* Adjust height as needed */
-        overflow: hidden;
+    .event-details-card {
+        max-width: 800px;
+        margin: 2rem auto;
     }
-    .banner-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
-        color: white;
-        padding: 2rem 0 1.5rem 0;
+
+    .event-info {
+        padding: 1rem;
     }
-     .banner-overlay h1 {
-        font-size: 2.5rem;
+
+    .event-description {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+
+    .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .meta-item i {
+        color: var(--primary-color);
+    }
+
+    .duration {
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .speakers-section, .tickets-section {
+        margin-top: 2rem;
+    }
+
+    .speakers-grid, .tickets-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .speaker-card, .ticket-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+    }
+
+    .speaker-card h4, .ticket-card h4 {
+        color: var(--primary-color);
         margin-bottom: 0.5rem;
     }
 
-    .organizer-actions .btn {
-        margin-right: 5px;
-        background-color: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        color: white;
-    }
-     .organizer-actions .btn-danger {
-         background-color: rgba(220, 53, 69, 0.7);
-         border-color: rgba(220, 53, 69, 1);
-     }
-     .organizer-actions .btn:hover {
-         background-color: rgba(255, 255, 255, 0.3);
-     }
-
-
-    .details-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr; /* 2/3 for main content, 1/3 for sidebar */
-        gap: 2rem;
+    .price {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--accent-color);
     }
 
-    .speaker-item strong { display: block; font-size: 1.1em; }
-    .speaker-item small { color: #555; }
-    .speaker-item .actions { margin-left: auto; white-space: nowrap;}
-    .speaker-item .actions .btn { margin-left: 5px;}
+    .quantity {
+        color: #666;
+        margin: 0.5rem 0;
+    }
 
-
-    .ticket-option .ticket-type { font-weight: 500; text-transform: capitalize; }
-    .ticket-option .ticket-price { font-size: 1.2em; font-weight: bold; color: var(--primary-color); }
-    .btn-block { display: block; width: 100%; }
-
-
-    hr.my-3 { margin-top: 1rem; margin-bottom: 1rem; border-top: 1px solid var(--border-color); }
-
-    @media (max-width: 992px) {
-        .details-grid {
-            grid-template-columns: 1fr; /* Stack columns on smaller screens */
+    @media (max-width: 768px) {
+        .event-meta {
+            flex-direction: column;
+            gap: 1rem;
         }
-    }
-     @media (max-width: 768px) {
-        .event-banner { height: 250px; }
-        .banner-overlay h1 { font-size: 2rem; }
     }
 </style>
 {% endblock %}

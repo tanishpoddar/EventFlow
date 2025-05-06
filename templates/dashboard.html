@@ -62,7 +62,13 @@
                         <tr>
                             <td><a href="{{ url_for('event_details', event_id=event.event_id) }}">{{ event.name }}</a></td>
                             <td>{{ event.date.strftime('%Y-%m-%d') }}</td>
-                            <td>{{ event.time.strftime('%H:%M') }}</td>
+                            <td>
+                                {% if event.start_time and event.end_time %}
+                                {{ event.start_time.strftime('%H:%M') }} - {{ event.end_time.strftime('%H:%M') }}
+                                {% else %}
+                                Not set
+                                {% endif %}
+                            </td>
                             <td>{{ event.venue.name if event.venue else 'N/A' }}</td>
                             <td class="text-right actions">
                                 <a href="{{ url_for('edit_event', event_id=event.event_id) }}" class="btn btn-sm btn-secondary">Edit</a>

@@ -9,7 +9,7 @@
              <h2>{{ form_title }}</h2>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ form_action }}">
+            <form method="POST" action="{{ form_action }}" id="eventForm">
                 <div class="form-group">
                     <label for="name">Event Name *</label>
                     <input type="text" class="form-control" id="name" name="name" value="{{ event.name if event else '' }}" required>
@@ -18,39 +18,63 @@
                     <label for="description">Description</label>
                     <textarea class="form-control" id="description" name="description" rows="4">{{ event.description if event else '' }}</textarea>
                 </div>
-                 <div class="form-row">
+                <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="date">Date *</label>
-                        {# Format date for input type="date" which expects YYYY-MM-DD #}
                         <input type="date" class="form-control" id="date" name="date" value="{{ event.date.strftime('%Y-%m-%d') if event and event.date else '' }}" required>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="time">Time *</label>
-                         {# Format time for input type="time" which expects HH:MM #}
-                        <input type="time" class="form-control" id="time" name="time" value="{{ event.time.strftime('%H:%M') if event and event.time else '' }}" required>
+                        <label for="start_time">Start Time *</label>
+                        <input type="time" class="form-control" id="start_time" name="start_time" value="{{ event.start_time.strftime('%H:%M') if event and event.start_time else '' }}" required>
                     </div>
-                 </div>
+                    <div class="form-group col-md-6">
+                        <label for="end_time">End Time *</label>
+                        <input type="time" class="form-control" id="end_time" name="end_time" value="{{ event.end_time.strftime('%H:%M') if event and event.end_time else '' }}" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <span id="duration-display" class="text-muted" style="display: none;"></span>
+                </div>
                 <div class="form-group">
                     <label for="location_id">Venue *</label>
                     <select class="form-control" id="location_id" name="location_id" required>
                         <option value="" disabled {% if not event %}selected{% endif %}>Select a venue</option>
                         {% for venue in venues %}
-                            <option value="{{ venue.venue_id }}" {% if event and event.location_id == venue.venue_id %}selected{% endif %}>
-                                {{ venue.name }} ({{ venue.city }})
+                            <option value="{{ venue.venue_id }}" 
+                                    {% if event and event.location_id == venue.venue_id %}selected{% endif %}
+                                    data-capacity="{{ venue.capacity }}">
+                                {{ venue.name }} ({{ venue.city }}) - Capacity: {{ venue.capacity }}
                             </option>
                         {% endfor %}
                     </select>
-                     <small class="form-text text-muted">Need a new venue? <a href="{{ url_for('create_venue') }}">Create one here.</a></small>
+                    <small class="form-text text-muted">Need a new venue? <a href="{{ url_for('create_venue') }}">Create one here.</a></small>
+                </div>
+                <div class="form-group">
+                    <label for="speakers">Select Speakers</label>
+                    <select class="form-control" id="speakers" name="speakers" multiple>
+                        {% for speaker in all_speakers %}
+                            <option value="{{ speaker.speaker_id }}" {% if event and speaker in event.speakers %}selected{% endif %}>
+                                {{ speaker.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple speakers. Need a new speaker? <a href="{{ url_for('create_speaker') }}">Add one here.</a></small>
                 </div>
 
-                 <div class="form-actions mt-4">
-                     <button type="submit" class="btn btn-primary">{{ 'Update' if event else 'Create' }} Event</button>
-                     <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <div class="form-actions mt-4">
+                    <button type="submit" class="btn btn-primary">{{ 'Update' if event else 'Create' }} Event</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/event-validation.js') }}"></script>
 {% endblock %}
 
 {% block head_extra %}
@@ -59,7 +83,6 @@
         max-width: 700px;
         margin: 2rem auto;
     }
-     /* Simple row/col simulation for side-by-side fields */
     .form-row {
         display: flex;
         flex-wrap: wrap;
@@ -73,14 +96,19 @@
         padding-left: 5px;
     }
     @media (max-width: 767px) {
-         .form-row > .col-md-6 {
-             flex: 0 0 100%;
-             max-width: 100%;
-         }
+        .form-row > .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
     }
     .form-actions {
         display: flex;
         gap: 10px;
+    }
+    #duration-display {
+        margin-top: -1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
     }
 </style>
 {% endblock %}

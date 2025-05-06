@@ -44,9 +44,10 @@ header {
     background-color: var(--card-bg);
     box-shadow: var(--shadow);
     padding: 1rem 0;
-    position: sticky;
+    position: fixed;
+    width: 100%;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
 }
 
 .navbar {
@@ -56,11 +57,11 @@ header {
 }
 
 .navbar .container {
-     display: flex;
+    display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
 }
-
 
 .navbar-brand {
     font-size: 1.8rem;
@@ -71,6 +72,7 @@ header {
     align-items: center;
     letter-spacing: 0.5px;
     transition: color 0.3s ease;
+    margin-right: 2rem;
 }
 
 .navbar-brand:hover {
@@ -103,12 +105,12 @@ header {
     margin-right: 0.5rem;
 }
 
-
 /* Main Content Area */
 .main-content {
-    flex-grow: 1; /* Takes up remaining vertical space */
-    padding-top: 2rem;
+    flex-grow: 1;
+    padding-top: 6rem; /* Add padding to account for fixed header */
     padding-bottom: 2rem;
+    margin-top: 0;
 }
 
 /* Footer */
@@ -152,7 +154,6 @@ footer {
     background-color: #5a6268;
 }
 
-
 .btn-accent {
     background-color: var(--accent-color);
     color: var(--text-color); /* Orange background, dark text */
@@ -189,7 +190,6 @@ button:disabled, .btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
 }
-
 
 /* Forms */
 .form-group {
@@ -236,7 +236,6 @@ select.form-control {
      padding-right: 2.5rem; /* Space for arrow */
 }
 
-
 /* Cards */
 .card {
     background-color: var(--card-bg);
@@ -257,7 +256,6 @@ select.form-control {
 .card-header h1, .card-header h2, .card-header h3 {
     margin-bottom: 0.25rem;
 }
-
 
 .card-body {
     padding: 1.25rem;
@@ -288,7 +286,6 @@ select.form-control {
      display: block;
 }
 
-
 /* Event Grid */
 .events-grid {
     display: grid;
@@ -310,7 +307,6 @@ select.form-control {
 .event-card .card-footer {
      margin-top: auto; /* Push footer to bottom */
 }
-
 
 /* Flash Messages */
 .flash-messages {
@@ -419,7 +415,6 @@ select.form-control {
 .d-flex { display: flex; }
 .justify-content-between { justify-content: space-between; }
 .align-items-center { align-items: center; }
-
 
 /* Responsive Design */
 @media (max-width: 768px) {

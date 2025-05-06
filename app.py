@@ -56,10 +56,45 @@ class Event(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     date = db.Column(db.Date, nullable=False)
-    time = db.Column(db.Time, nullable=False)
+    time = db.Column(db.Time, nullable=True)  # Keep the old time field for now
     location_id = db.Column(db.Integer, db.ForeignKey('venue.venue_id'), nullable=False)
     speakers = db.relationship('Speaker', backref='event', lazy=True)
     tickets = db.relationship('Ticket', backref='event', lazy=True)
+    
+    # Properties to handle time information
+    _start_time = None
+    _end_time = None
+    
+    @property
+    def start_time(self):
+        if self._start_time is not None:
+            return self._start_time
+        elif self.time is not None:
+            return self.time
+        return None
+    
+    @start_time.setter
+    def start_time(self, value):
+        if isinstance(value, str):
+            self._start_time = datetime.datetime.strptime(value, '%H:%M').time()
+        else:
+            self._start_time = value
+    
+    @property
+    def end_time(self):
+        if self._end_time is not None:
+            return self._end_time
+        elif self.time is not None:
+            # If we only have the old time field, use it as both start and end
+            return self.time
+        return None
+    
+    @end_time.setter
+    def end_time(self, value):
+        if isinstance(value, str):
+            self._end_time = datetime.datetime.strptime(value, '%H:%M').time()
+        else:
+            self._end_time = value
 
 class Order(db.Model):
     __tablename__ = 'order'
@@ -164,6 +199,13 @@ def event_details(event_id):
     """Page displaying details for a specific event."""
     event = Event.query.get_or_404(event_id)
     ticket_types = TicketType.query.filter_by(event_id=event_id).all()
+    
+    # Set time information from form data if available
+    if request.args.get('start_time'):
+        event.start_time = request.args.get('start_time')
+    if request.args.get('end_time'):
+        event.end_time = request.args.get('end_time')
+    
     return render_template('event_details.html', event=event, ticket_types=ticket_types)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -260,50 +302,89 @@ def dashboard():
 @app.route('/events/create', methods=['GET', 'POST'])
 @organizer_required
 def create_event():
-    """Create a new event."""
-    venues = Venue.query.order_by(Venue.name).all()
     if request.method == 'POST':
-        name = request.form['name']
+        name = request.form.get('name')
         description = request.form.get('description')
-        date = request.form['date']
-        time = request.form['time']
-        location_id = request.form['location_id']
+        date = datetime.datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+        location_id = request.form.get('location_id')
+        speaker_ids = request.form.getlist('speakers')
 
-        new_event = Event(name=name, description=description, date=date, time=time, location_id=location_id)
+        # Create event with the old time field for backward compatibility
+        event = Event(
+            name=name,
+            description=description,
+            date=date,
+            time=datetime.datetime.strptime(start_time, '%H:%M').time() if start_time else None,
+            location_id=location_id
+        )
+
+        # Set the new time properties
+        event.start_time = start_time
+        event.end_time = end_time
+
+        # Add selected speakers
+        for speaker_id in speaker_ids:
+            speaker = Speaker.query.get(speaker_id)
+            if speaker:
+                event.speakers.append(speaker)
+
         try:
-            db.session.add(new_event)
+            db.session.add(event)
             db.session.commit()
             flash('Event created successfully!', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error creating event: {e}', 'danger')
+            flash('Error creating event. Please try again.', 'error')
+            app.logger.error(f"Error creating event: {str(e)}")
 
-    return render_template('event_form.html', venues=venues, form_action=url_for('create_event'), form_title="Create New Event")
+    venues = Venue.query.all()
+    speakers = Speaker.query.all()
+    return render_template('event_form.html', form_title='Create Event', form_action=url_for('create_event'), venues=venues, all_speakers=speakers)
 
 
 @app.route('/events/<int:event_id>/edit', methods=['GET', 'POST'])
 @organizer_required
 def edit_event(event_id):
-    """Edit an existing event."""
     event = Event.query.get_or_404(event_id)
-    venues = Venue.query.order_by(Venue.name).all()
-
+    
     if request.method == 'POST':
-        event.name = request.form['name']
+        event.name = request.form.get('name')
         event.description = request.form.get('description')
-        event.date = request.form['date']
-        event.time = request.form['time']
-        event.location_id = request.form['location_id']
+        event.date = datetime.datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+        
+        # Update the old time field
+        start_time = request.form.get('start_time')
+        if start_time:
+            event.time = datetime.datetime.strptime(start_time, '%H:%M').time()
+        
+        # Update the new time properties
+        event.start_time = start_time
+        event.end_time = request.form.get('end_time')
+        
+        event.location_id = request.form.get('location_id')
+        
+        # Update speakers
+        event.speakers = []
+        for speaker_id in request.form.getlist('speakers'):
+            speaker = Speaker.query.get(speaker_id)
+            if speaker:
+                event.speakers.append(speaker)
+
         try:
             db.session.commit()
             flash('Event updated successfully!', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error updating event: {e}', 'danger')
+            flash('Error updating event. Please try again.', 'error')
+            app.logger.error(f"Error updating event: {str(e)}")
 
-    return render_template('event_form.html', event=event, venues=venues, form_action=url_for('edit_event', event_id=event_id), form_title="Edit Event")
+    venues = Venue.query.all()
+    speakers = Speaker.query.all()
+    return render_template('event_form.html', form_title='Edit Event', form_action=url_for('edit_event', event_id=event_id), event=event, venues=venues, all_speakers=speakers)
 
 
 @app.route('/events/<int:event_id>/delete', methods=['POST'])
@@ -447,21 +528,39 @@ def delete_speaker(speaker_id):
 @app.route('/events/<int:event_id>/tickets/manage', methods=['GET', 'POST'])
 @organizer_required
 def manage_event_tickets(event_id):
+    """Manage ticket types for an event."""
     event = Event.query.get_or_404(event_id)
+    
     if request.method == 'POST':
-        # Add or update ticket types
-        types = request.form.getlist('type')
-        prices = request.form.getlist('price')
-        quantities = request.form.getlist('quantity')
-        # Remove existing ticket types
-        TicketType.query.filter_by(event_id=event_id).delete()
-        for t, p, q in zip(types, prices, quantities):
-            if t.strip() and p and q:
-                ticket_type = TicketType(event_id=event_id, type=t.strip(), price=float(p), quantity=int(q))
-                db.session.add(ticket_type)
-        db.session.commit()
-        flash('Ticket types updated!', 'success')
-        return redirect(url_for('manage_event_tickets', event_id=event_id))
+        ticket_type = request.form['type']
+        price = float(request.form['price'])
+        quantity = int(request.form['quantity'])
+
+        # Calculate total tickets including existing ones
+        existing_tickets = TicketType.query.filter_by(event_id=event_id).all()
+        total_tickets = sum(t.quantity for t in existing_tickets) + quantity
+
+        # Check if total tickets exceed venue capacity
+        if total_tickets > event.venue.capacity:
+            flash(f'Total tickets ({total_tickets}) cannot exceed venue capacity ({event.venue.capacity}).', 'danger')
+            return redirect(url_for('manage_event_tickets', event_id=event_id))
+
+        new_ticket_type = TicketType(
+            event_id=event_id,
+            type=ticket_type,
+            price=price,
+            quantity=quantity
+        )
+
+        try:
+            db.session.add(new_ticket_type)
+            db.session.commit()
+            flash('Ticket type added successfully!', 'success')
+            return redirect(url_for('manage_event_tickets', event_id=event_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding ticket type: {str(e)}', 'danger')
+
     ticket_types = TicketType.query.filter_by(event_id=event_id).all()
     return render_template('manage_tickets.html', event=event, ticket_types=ticket_types)
 
@@ -477,35 +576,21 @@ def view_event_tickets(event_id):
 @app.route('/tickets/<int:ticket_id>/delete', methods=['POST'])
 @login_required(role="organizer")
 def delete_ticket(ticket_id):
-    """Delete a ticket (organizers and admins only)"""
-    ticket = Ticket.query.get_or_404(ticket_id)
-    event_id = ticket.event_id
-    
-    # Check if user is admin or the organizer of this event
-    user = User.query.get(session['user_id'])
-    if user.user_type != 'administrator':
-        # TODO: Add event.organizer_id check once that field is added
-        flash('You do not have permission to delete this ticket.', 'danger')
-        return redirect(url_for('view_event_tickets', event_id=event_id))
+    """Delete a ticket type."""
+    ticket_type = TicketType.query.get_or_404(ticket_id)
+    event_id = ticket_type.event_id
     
     try:
-        # Increment the ticket type quantity
-        ticket_type = TicketType.query.filter_by(
-            event_id=ticket.event_id,
-            type=ticket.type
-        ).first()
-        if ticket_type:
-            ticket_type.quantity += 1
-            
-        # Delete the ticket
-        db.session.delete(ticket)
+        # Delete associated tickets first
+        Ticket.query.filter_by(event_id=event_id, type=ticket_type.type).delete()
+        db.session.delete(ticket_type)
         db.session.commit()
-        flash('Ticket deleted successfully.', 'success')
+        flash('Ticket type deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error deleting ticket: {str(e)}', 'danger')
+        flash(f'Error deleting ticket type: {str(e)}', 'danger')
     
-    return redirect(url_for('view_event_tickets', event_id=event_id))
+    return redirect(url_for('manage_event_tickets', event_id=event_id))
 
 @app.route('/tickets/<int:ticket_id>/cancel', methods=['POST'])
 @login_required(role="attendee")
@@ -566,42 +651,57 @@ def cancel_ticket(ticket_id):
     return redirect(url_for('my_tickets'))
 
 # --- Attendee Actions ---
-@app.route('/book/<int:event_id>', methods=['POST'])
-@login_required(role="attendee")
+@app.route('/book_ticket/<int:event_id>', methods=['POST'])
 def book_ticket(event_id):
-    # Check if user is an attendee
-    user = User.query.get(session['user_id'])
-    if user.user_type != 'attendee':
-        flash('Only attendees can book tickets.', 'danger')
-        return redirect(url_for('event_details', event_id=event_id))
-        
+    if 'user_id' not in session or session.get('user_role') != 'attendee':
+        flash('Please login as an attendee to book tickets.', 'danger')
+        return redirect(url_for('login'))
+    
     event = Event.query.get_or_404(event_id)
-    user_id = session['user_id']
     ticket_type_name = request.form.get('ticket_type')
     quantity = int(request.form.get('quantity', 1))
-    ticket_type = TicketType.query.filter_by(event_id=event_id, type=ticket_type_name).first()
+    
+    # Find the ticket type by name
+    ticket_type = TicketType.query.filter_by(
+        event_id=event_id,
+        type=ticket_type_name
+    ).first()
+    
     if not ticket_type or quantity < 1 or quantity > ticket_type.quantity:
         flash('Invalid ticket selection or not enough tickets available.', 'danger')
         return redirect(url_for('event_details', event_id=event_id))
-    # Create order
-    total_price = float(ticket_type.price) * quantity
-    order = Order(user_id=user_id, date=datetime.datetime.now(), total_price=total_price)
-    db.session.add(order)
-    db.session.flush()  # Get order_id
-    # Create tickets
-    for _ in range(quantity):
-        ticket = Ticket(
-            event_id=event_id,
-            order_id=order.order_id,
-            price=ticket_type.price,
-            type=ticket_type.type
+    
+    try:
+        # Create order
+        order = Order(
+            user_id=session['user_id'],
+            date=datetime.datetime.now(),
+            total_price=ticket_type.price * quantity
         )
-        db.session.add(ticket)
-    # Decrement available quantity
-    ticket_type.quantity -= quantity
-    db.session.commit()
-    flash(f'Booked {quantity} "{ticket_type.type}" ticket(s) for "{event.name}"!', 'success')
-    return redirect(url_for('my_tickets'))
+        db.session.add(order)
+        db.session.flush()  # Get order_id
+        
+        # Create tickets
+        for _ in range(quantity):
+            ticket = Ticket(
+                event_id=event_id,
+                order_id=order.order_id,
+                price=ticket_type.price,
+                type=ticket_type.type
+            )
+            db.session.add(ticket)
+        
+        # Update available tickets
+        ticket_type.quantity -= quantity
+        
+        db.session.commit()
+        flash(f'Successfully booked {quantity} {ticket_type.type} ticket(s)!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('An error occurred while booking tickets.', 'danger')
+        app.logger.error(f"Error booking tickets: {str(e)}")
+    
+    return redirect(url_for('event_details', event_id=event_id))
 
 @app.route('/my-tickets')
 @login_required(role="attendee")
@@ -613,6 +713,44 @@ def my_tickets():
      # tickets = Ticket.query.join(Order).filter(Order.user_id == user_id).options(db.joinedload(Ticket.event)).all() # Alternative query
      return render_template('my_tickets.html', orders=orders)
 
+@app.route('/admin/organizers')
+@login_required(role="administrator")
+def manage_organizers():
+    """Administrator view to manage organizers."""
+    organizers = User.query.filter_by(user_type='organizer').all()
+    return render_template('manage_organizers.html', organizers=organizers)
+
+@app.route('/admin/organizers/<int:user_id>/delete', methods=['POST'])
+@login_required(role="administrator")
+def delete_organizer(user_id):
+    """Delete an organizer (admin only)."""
+    organizer = User.query.get_or_404(user_id)
+    if organizer.user_type != 'organizer':
+        flash('User is not an organizer.', 'danger')
+        return redirect(url_for('manage_organizers'))
+    
+    try:
+        # Delete associated events and tickets
+        events = Event.query.filter_by(organizer_id=user_id).all()
+        for event in events:
+            # Delete associated tickets
+            Ticket.query.filter_by(event_id=event.event_id).delete()
+            # Delete ticket types
+            TicketType.query.filter_by(event_id=event.event_id).delete()
+            # Delete speakers
+            Speaker.query.filter_by(event_id=event.event_id).delete()
+            # Delete the event
+            db.session.delete(event)
+        
+        # Delete the organizer
+        db.session.delete(organizer)
+        db.session.commit()
+        flash('Organizer and all associated data deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting organizer: {str(e)}', 'danger')
+    
+    return redirect(url_for('manage_organizers'))
 
 # --- Main Execution ---
 if __name__ == '__main__':
